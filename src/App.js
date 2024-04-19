@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import './App.css';
 import { saveAs } from 'file-saver';
 import { Document, Packer, Paragraph, Table, TableCell, TableRow, HeadingLevel } from 'docx';
-
+import { jsPDF } from "jspdf";
 
 function WelcomePage({ onStart }) {
   return (
@@ -31,6 +31,9 @@ function SelfInfo({ onNext, formData, setFormData }) {
     setFormData({ ...formData, firstName, middleName, lastName, age, gender, photo }); // Include photo in form data
     onNext();
   };
+
+ 
+
 
   return (
     <div>
@@ -512,62 +515,102 @@ function Education({ onNext, onPrev, formData, setFormData }) {
 }
 
 function Preview({ formData, onPrev, onSubmit }) {
- 
-  const downloadFormData = () => {
-    let formattedData = '';
+  const [photoData, setPhotoData] = useState('');
 
-    // Add title for Self Information section
-    formattedData += 'Self Information\n';
-    for (const [key, value] of Object.entries(formData)) {
-      if (key === 'firstName' || key === 'middleName' || key === 'lastName' || key === 'age' || key === 'gender' || key === 'photo') {
-        formattedData += `${key}: ${value}\n`;
-      }
+
+
+  const downloadFormData = async () => {
+    // Create a new jsPDF instance
+    const pdf = new jsPDF();
+    
+
+    // Define the content of the PDF
+    let content = '';
+// Add self information
+content += 'Self Information\n';
+content += `First Name: ${formData.firstName}\n`;
+content += `Middle Name: ${formData.middleName}\n`;
+content += `Last Name: ${formData.lastName}\n`;
+content += `Age: ${formData.age}\n`;
+content += `Gender: ${formData.gender}\n`;
+
+
+// Add photo field
+content += 'Photo: ';
+if (formData.photo) {
+    try {
+        // Fetch the image data
+        const response = await fetch(formData.photo);
+        const blob = await response.blob();
+        
+        // Create object URL for the image data
+        const imgData = URL.createObjectURL(blob);
+        
+        // Add the image to the PDF
+        pdf.addImage(imgData, 'JPEG', 10, 60, 50, 50); // Adjust coordinates and dimensions as needed
+        
+        // Add "Uploaded" if the photo is uploaded
+        content += "Uploaded\n\n"; 
+    } catch (error) {
+        console.error("Error fetching or adding image:", error);
+        // Display a more informative error message
+        content += `Error: ${error.message}\n\n`; 
     }
-    formattedData += '\n';
+} else {
+    content += "Not Uploaded\n\n"; // Add "Not Uploaded" if no photo is uploaded
+}
 
-    // Add title for Address section
-    formattedData += 'Address\n';
-    const { permanentAddress, correspondenceAddress } = formData;
-    formattedData += 'Permanent Address\n';
-    for (const [key, value] of Object.entries(permanentAddress)) {
-      formattedData += `${key}: ${value}\n`;
+       content += '\n\n';
+
+    // Add permanent address
+    content += 'Permanent Address\n';
+    for (const [key, value] of Object.entries(formData.permanentAddress)) {
+        content += `${key}: ${value}\n`;
     }
-    formattedData += '\n';
-    formattedData += 'Correspondence Address\n';
-    for (const [key, value] of Object.entries(correspondenceAddress)) {
-      formattedData += `${key}: ${value}\n`;
+    content += '\n\n';
+
+    // Add correspondence address
+    content += 'Correspondence Address\n';
+    for (const [key, value] of Object.entries(formData.correspondenceAddress)) {
+        content += `${key}: ${value}\n`;
     }
-    formattedData += '\n';
+    content += '\n\n\n';
 
-    // Add title for Education section
-    formattedData += 'Education\n';
-    const { educationDetails } = formData;
-    for (const [key, value] of Object.entries(educationDetails)) {
-      formattedData += `${key}\n`;
-      for (const [subKey, subValue] of Object.entries(value)) {
-        formattedData += `${subKey}: ${subValue}\n`;
-      }
-      formattedData += '\n';
+    // Add education details
+    content += 'Education\n\n';
+    for (const [key, value] of Object.entries(formData.educationDetails)) {
+        content += `${key}\n`;
+        for (const [subKey, subValue] of Object.entries(value)) {
+            content += `${subKey}: ${subValue}\n`;
+        }
+
+        content += '\n\n';
     }
 
-    // Create a Blob with the formatted data
-    const blob = new Blob([formattedData], { type: 'text/plain;charset=utf-8' });
+    // Calculate number of pages required
+    const totalPages = Math.ceil(pdf.getStringUnitWidth(content) / pdf.internal.pageSize.getWidth());
 
-    // Create an <a> element
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'formData.txt';
+    // Start adding content to pages
+    let startY = 10;
+    let endY = 250;
+    let contentIndex = 0;
+    for (let page = 1; page <= totalPages; page++) {
+        // Add content for this page
+        const currentPageContent = content.substring(contentIndex, contentIndex + (totalPages === 1 ? content.length : Math.floor((endY - startY) * content.length / pdf.internal.pageSize.getHeight())));
+        pdf.text(currentPageContent, 20, startY);
 
-    // Append the <a> element to the body
-    document.body.appendChild(link);
+        // If there are more pages, add a new one
+        if (page < totalPages) {
+            pdf.addPage();
+            contentIndex += Math.floor((endY - startY) * content.length / pdf.internal.pageSize.getHeight());
+            startY = 10;
+            endY = 200;
+        }
+    }
 
-    // Trigger a click event on the <a> element to initiate download
-    link.click();
-
-    // Remove the <a> element from the body
-    document.body.removeChild(link);
+    // Save the PDF with the name formData.pdf
+    pdf.save("formData.pdf");
 };
-
 
 
 
@@ -605,16 +648,20 @@ const renderEducationRows = (educationDetails) => {
     <div>
       <h2>Preview</h2>
       <h3>Self Information</h3>
-      <table>
-        <tbody>
-          <tr><td>First Name:</td><td>{firstName}</td></tr>
-          <tr><td>Middle Name:</td><td>{middleName}</td></tr>
-          <tr><td>Last Name:</td><td>{lastName}</td></tr>
-          <tr><td>Age:</td><td>{age}</td></tr>
-          <tr><td>Gender:</td><td>{gender}</td></tr>
-          <tr><td>Photo:</td><td>{photo ? "Uploaded" : "Not Uploaded"}</td></tr>
-        </tbody>
-      </table>
+<table>
+  <tbody>
+    <tr><td>First Name:</td><td>{firstName}</td></tr>
+    <tr><td>Middle Name:</td><td>{middleName}</td></tr>
+    <tr><td>Last Name:</td><td>{lastName}</td></tr>
+    <tr><td>Age:</td><td>{age}</td></tr>
+    <tr><td>Gender:</td><td>{gender}</td></tr>
+    <tr>
+      <td>Photo:</td>
+      <td>{photo ? <img src={URL.createObjectURL(photo)} alt="Uploaded" style={{ maxWidth: '100px', maxHeight: '100px' }} /> : "Not Uploaded"}</td>
+    </tr>
+  </tbody>
+</table>
+
 
       <h3>Address</h3>
       <table>
@@ -650,6 +697,7 @@ const renderEducationRows = (educationDetails) => {
 
 function App() {
   const [step, setStep] = useState(0);
+  const totalSteps = 4;
   const [formData, setFormData] = useState({
     // Initial empty education details
     educationDetails: {
@@ -746,19 +794,33 @@ function App() {
     setStep(0);
   };
 
-  const progress = (step - 1) * 33.33;
-
+  
   return (
     <>
-      {step === 0 && <WelcomePage onStart={handleStart} />}
+        {step === 0 && <WelcomePage onStart={handleStart} />}
       {step !== 0 && !submitted && (
         <div className="App">
-          <div className="progress-container">
-            <div className="progress-bar">
-              <div className="progress-bar-inner" style={{ width: `${progress}%` }}></div>
-              <div className="progress-label">{progress}%</div>
-            </div>
-          </div>
+     <div className="step-counter">
+  <div className={`step-circle ${step >= 1 ? 'completed' : ''} ${step === 1 ? 'active' : ''}`}>
+    {step > 1 ? <i className="fas fa-check"></i> : '1'}
+  </div>
+  <div className="step-line" />
+  <div className={`step-circle ${step >= 2 ? 'completed' : ''} ${step === 2 ? 'active' : ''}`}>
+    {step > 2 ? <i className="fas fa-check"></i> : '2'}
+  </div>
+  <div className="step-line" />
+  <div className={`step-circle ${step >= 3 ? 'completed' : ''} ${step === 3 ? 'active' : ''}`}>
+    {step > 3 ? <i className="fas fa-check"></i> : '3'}
+  </div>
+  <div className="step-line" />
+  <div className={`step-circle ${step >= 4 ? 'completed' : ''} ${step === 4 ? 'active' : ''}`}>
+    {step > 4 ? <i className="fas fa-check"></i> : '4'}
+  </div>
+</div>
+
+
+          
+
           {step === 1 && (
             <SelfInfo
               onNext={handleNext}

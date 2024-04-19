@@ -468,7 +468,7 @@ button[type="submit"]:hover {
 .WelcomePage {
   text-align: center;
   padding: 50px;
-  margin-top: 200px;
+  margin-top: 220px;
    /* Add any other styles you need */
 }
 
@@ -558,4 +558,87 @@ h3, h4 {
 
 th[colspan="2"] {
   background-color: #f2f2f2;
+}
+.step-indicator {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.step {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  background-color: #ccc;
+  border-radius: 50%;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 16px;
+}
+
+.step.active {
+  background-color: #007bff;
+  color: #fff;
+}
+
+.step::before {
+  content: '';
+  position: absolute;
+  height: 2px;
+  width: calc(100% + 30px); /* Width to cover the space between circles */
+  background-color: #ccc;
+  top: 50%;
+  transform: translateY(-50%);
+  left: -15px; /* Adjust this value to align with the circle */
+}
+
+.step.active::before {
+  background-color: #007bff;
+}
+
+.step:first-child::before {
+  display: none; /* Hide line before the first circle */
+}
+
+.step-counter {
+  display: flex;
+  align-items: center;
+}
+
+.step-circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid #ccc;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  font-size: 16px;
+  position: relative;
+}
+
+.step-line {
+  flex: 1;
+  height: 2px; /* Adjust line thickness */
+  background-color: black; /* Adjust line color */
+}
+
+.step-circle.completed i {
+  visibility: visible; /* Show the check icon for completed steps */
+}
+
+.step-circle i {
+  visibility: hidden; /* Hide the number inside the circle */
+}
+
+.step-circle.completed {
+  background-color: green; /* Change color for completed steps */
+  color: white; /* Change text color for completed steps */
+}
+
+.step-circle.active {
+  background-color: blue; /* Change color for active step */
+  color: white; /* Change text color for active step */
 }
